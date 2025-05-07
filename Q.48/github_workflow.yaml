@@ -1,0 +1,48 @@
+# GitHub Actions Workflow for CI/CD
+# Description: Automates testing, building, and deployment of the MLOps pipeline.
+
+name: MLOps Pipeline CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+      - name: Run tests
+        run: |
+          pytest tests/
+      - name: Build Docker image
+        run: |
+          docker build -t mlops-pipeline:latest .
+      - name: Push Docker image
+        run: |
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+          docker tag mlops-pipeline:latest myrepo/mlops-pipeline:latest
+          docker push myrepo/mlops-pipeline:latest
+
+  deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
+        env:
+          KUBECONFIG: ${{ secrets.KUBECONFIG }}

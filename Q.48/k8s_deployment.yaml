@@ -1,0 +1,51 @@
+# Kubernetes Deployment Manifest
+# Description: Deploys the model service with auto-scaling.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mlops-model
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: mlops-model
+  template:
+    metadata:
+      labels:
+        app: mlops-model
+    spec:
+      containers:
+      - name: mlops-model
+        image: myrepo/mlops-pipeline:latest
+        ports:
+        - containerPort: 5000
+        env:
+        - name: MODEL_PATH
+          value: "models/model_20250507_120000.pkl"
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+          limits:
+            cpu: "1000m"
+            memory: "1024Mi"
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: mlops-model-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: mlops-model
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
