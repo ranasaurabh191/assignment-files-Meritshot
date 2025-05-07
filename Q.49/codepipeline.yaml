@@ -1,0 +1,51 @@
+# AWS CodePipeline Configuration
+# Description: Automates SageMaker pipeline updates and deployment.
+
+version: 0.2
+name: MedicalMLPipeline
+stages:
+  - stage:
+      name: Source
+      actions:
+        - name: SourceAction
+          actionTypeId:
+            category: Source
+            owner: ThirdParty
+            provider: GitHub
+            version: '1'
+          configuration:
+            Owner: <your-github-owner>
+            Repo: <your-github-repo>
+            Branch: main
+            OAuthToken: "{{resolve:secretsmanager:github-token}}"
+          outputArtifacts:
+            - name: SourceArtifact
+  - stage:
+      name: Build
+      actions:
+        - name: BuildAction
+          actionTypeId:
+            category: Build
+            owner: AWS
+            provider: CodeBuild
+            version: '1'
+          configuration:
+            ProjectName: SageMakerPipelineBuild
+          inputArtifacts:
+            - name: SourceArtifact
+          outputArtifacts:
+            - name: BuildArtifact
+  - stage:
+      name: Deploy
+      actions:
+        - name: DeployAction
+          actionTypeId:
+            category: Deploy
+            owner: AWS
+            provider: SageMaker
+            version: '1'
+          configuration:
+            PipelineName: MedicalMLPipeline
+            Stage: Deploy
+          inputArtifacts:
+            - name: BuildArtifact
